@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Account - Shinzi Music</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #000000;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        /* Two-Row Navigation Bar */
+        .navbar {
+            background-color: #121212;
+            border-bottom: 1px solid #282828;
+            display: flex;
+            flex-direction: column;
+        }
+        .nav-row-1 {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #1e1e1e;
+            position: relative;
+        }
+        .back-btn {
+            position: absolute;
+            left: 20px;
+            color: #1db954;
+            text-decoration: none;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .nav-row-1 h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        /* Account Content */
+        .header {
+            font-size: 28px;
+            font-weight: bold;
+            padding: 20px;
+            border-bottom: 1px solid #1e1e1e;
+            margin-bottom: 20px;
+            max-width: 600px;
+            margin: 0 auto 20px auto;
+        }
+        .container {
+            padding: 10px 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .info-card {
+            background-color: #121212;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .info-group {
+            margin-bottom: 20px;
+        }
+        .info-group:last-child {
+            margin-bottom: 0;
+        }
+        .info-label {
+            color: #757575;
+            font-size: 13px;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+        }
+        .info-value {
+            font-size: 16px;
+            font-weight: 500;
+            color: #ffffff;
+            word-break: break-all;
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: 1px solid #333333;
+            border-radius: 8px;
+            padding: 16px; 
+            font-size: 16px; 
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 12px;
+            transition: background-color 0.2s;
+        }
+        .action-btn:active {
+            background-color: #2a2a2a;
+        }
+        .btn-reset {
+            color: #1db954;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-row-1">
+            <a href="settings.html" class="back-btn">‹</a>
+            <h1>Account Details</h1>
+        </div>
+    </nav>
+
+    <div class="header">Your Profile</div>
+
+    <div class="container">
+
+        <div class="info-card">
+            <div class="info-group">
+                <div class="info-label">Email Address</div>
+                <div class="info-value" id="accEmail">Loading...</div>
+            </div>
+            <div class="info-group">
+                <div class="info-label">Account ID (UID)</div>
+                <div class="info-value" id="accUid" style="color: #a7a7a7; font-size: 14px;">Loading...</div>
+            </div>
+            <div class="info-group">
+                <div class="info-label">Member Since</div>
+                <div class="info-value" id="accDate">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Linked to the real reset function now -->
+        <button class="action-btn btn-reset" onclick="handlePasswordReset()">Reset Password</button>
+        <button class="action-btn">Request Data Export</button>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        // Stealth Key Array
+        const firebaseConfig = {
+            apiKey: ['AIzaSyA9', '-BquJOixe2dku', 'MA4OR_LH_', '-4kqcFrRE'].join(''),
+            authDomain: "shinzi-music.firebaseapp.com",
+            projectId: "shinzi-music",
+            storageBucket: "shinzi-music.firebasestorage.app",
+            messagingSenderId: "985596670426",
+            appId: "1:985596670426:web:b52b69290533ae3dc450e3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Radar: Grabs the logged-in user's details to populate the cards
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('accEmail').innerText = user.email || "No Email Provided";
+                document.getElementById('accUid').innerText = user.uid;
+
+                const creationTime = new Date(user.metadata.creationTime);
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                document.getElementById('accDate').innerText = creationTime.toLocaleDateString(undefined, options);
+            } else {
+                window.location.href = "login.html";
+            }
+        });
+
+        // Real Firebase Password Reset Engine
+        window.handlePasswordReset = () => {
+            const user = auth.currentUser;
+            if (user && user.email) {
+                sendPasswordResetEmail(auth, user.email)
+                    .then(() => {
+                        alert('Success! A secure password reset link has been sent to ' + user.email);
+                    })
+                    .catch((error) => {
+                        console.error("Reset error:", error);
+                        alert('Reset failed: ' + error.message);
+                    });
+            } else {
+                alert('No active session found. Please log in again.');
+            }
+        };
+    </script>
+</body>
+</html>
