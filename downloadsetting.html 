@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Downloads - Shinzi Music</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #000000;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            background-color: #121212;
+            border-bottom: 1px solid #282828;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+            position: relative;
+        }
+        .back-btn {
+            position: absolute;
+            left: 20px;
+            color: #1db954;
+            text-decoration: none;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .navbar h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        /* Content */
+        .header {
+            font-size: 28px;
+            font-weight: bold;
+            padding: 20px;
+            border-bottom: 1px solid #1e1e1e;
+            margin-bottom: 20px;
+            max-width: 600px;
+            margin: 0 auto 20px auto;
+        }
+        .container {
+            padding: 10px 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .settings-card {
+            background-color: #121212;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .setting-row:last-child {
+            margin-bottom: 0;
+        }
+        .setting-info h3 {
+            margin: 0 0 6px 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .setting-info p {
+            margin: 0;
+            font-size: 13px;
+            color: #a7a7a7;
+        }
+
+        /* iOS style Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #1db954;
+        }
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+        /* Custom Select Dropdown */
+        select {
+            background-color: #1e1e1e;
+            color: #fff;
+            border: 1px solid #333;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* Storage Bar */
+        .storage-bar-container {
+            width: 100%;
+            height: 8px;
+            background-color: #333;
+            border-radius: 4px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+        .storage-fill {
+            height: 100%;
+            width: 15%; /* Fake value for UI */
+            background-color: #1db954;
+        }
+
+        /* Danger Button */
+        .danger-btn {
+            background-color: #1e1e1e;
+            color: #ff3b30;
+            border: 1px solid #333333;
+            border-radius: 8px;
+            padding: 16px; 
+            font-size: 16px; 
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+        }
+        .danger-btn:active {
+            background-color: #2a2a2a;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="settings.html" class="back-btn">‹</a>
+        <h1>Downloads</h1>
+    </nav>
+
+    <div class="header">Download Settings</div>
+
+    <div class="container">
+
+        <div class="settings-card">
+            <div class="setting-row">
+                <div class="setting-info">
+                    <h3>Download over Wi-Fi only</h3>
+                    <p>Save your mobile data</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" checked id="wifiToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-info">
+                    <h3>Audio Quality</h3>
+                    <p>Higher quality uses more space</p>
+                </div>
+                <select id="qualitySelect">
+                    <option value="high">High</option>
+                    <option value="standard" selected>Standard</option>
+                    <option value="low">Data Saver</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <div class="setting-info">
+                <h3>Storage</h3>
+                <p>15% used by Shinzi Music downloads</p>
+            </div>
+            <div class="storage-bar-container">
+                <div class="storage-fill"></div>
+            </div>
+        </div>
+
+        <button class="danger-btn" onclick="clearDownloads()">Clear All Downloads</button>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: ['AIzaSyA9', '-BquJOixe2dku', 'MA4OR_LH_', '-4kqcFrRE'].join(''),
+            authDomain: "shinzi-music.firebaseapp.com",
+            projectId: "shinzi-music"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Security Check
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = "login.html";
+            }
+        });
+
+        // Dummy function for clearing downloads
+        window.clearDownloads = () => {
+            const confirmed = confirm("Are you sure you want to delete all downloaded music from this device?");
+            if(confirmed) {
+                alert("All local downloads cleared.");
+                // Later we will link this to IndexedDB clearing
+            }
+        };
+    </script>
+</body>
+</html>
