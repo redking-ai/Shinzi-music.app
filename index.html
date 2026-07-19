@@ -3,7 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta charset="UTF-8">
-    <title>Shinzi Music</title>
+    <title>Shinzi Music App</title>
 
     <style>
         :root {
@@ -19,8 +19,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg-main); color: var(--text-main); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
         .hidden { display: none !important; }
-
-        /* 🔥 NEW: Hides the player completely if nothing is active */
         .hidden-player { display: none !important; }
 
         .app-container { display: flex; flex: 1; height: calc(100vh - 90px); }
@@ -63,35 +61,53 @@
         .card-play { position: absolute; right: 24px; top: 116px; width: 48px; height: 48px; border-radius: 50%; background-color: var(--accent); border: none; display: flex; align-items: center; justify-content: center; opacity: 0; transform: translateY(8px); transition: all 0.3s ease; box-shadow: 0 8px 16px rgba(0,0,0,0.4); cursor: pointer; }
         .music-card:hover .card-play { opacity: 1; transform: translateY(0); }
 
-        /* Search Interface */
+        /* Search Interface & List Items */
         .search-container { position: relative; max-width: 500px; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
         .search-input-field { width: 100%; padding: 14px 48px; border-radius: 50px; border: 2px solid transparent; background-color: #242424; color: #ffffff; font-size: 14px; font-weight: 500; outline: none; transition: border-color 0.3s ease; }
         .search-input-field:focus { border-color: #ffffff; background-color: #2a2a2a; }
         .search-icon-left { position: absolute; left: 16px; top: 12px; width: 20px; height: 20px; color: #a7a7a7; }
         .search-clear-btn { background: none; border: none; color: var(--text-sub); cursor: pointer; padding: 10px; }
         .results-vertical-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
-        .search-item { display: flex; align-items: center; gap: 16px; padding: 12px; border-radius: 6px; cursor: pointer; transition: background-color 0.2s ease; }
+        
+        /* This class is used for Search, Favorites, and History! */
+        .search-item { display: flex; align-items: center; gap: 16px; padding: 12px; border-radius: 6px; cursor: pointer; transition: background-color 0.2s ease; background: rgba(255,255,255,0.05); margin-bottom: 4px; }
         .search-item:hover { background-color: rgba(255,255,255,0.1); }
-        .search-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 4px; }
+        .search-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; }
         .search-info { flex: 1; min-width: 0; }
-        .search-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
-        .search-channel { font-size: 13px; color: var(--text-sub); margin-top: 4px; }
+        .search-title { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; margin-bottom: 4px; }
+        .search-channel { font-size: 13px; color: var(--text-sub); }
 
         /* Settings Integrated UI */
         .menu-list { display: flex; flex-direction: column; gap: 12px; }
-        .menu-item { background: var(--bg-card); padding: 16px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; color: var(--text-main); text-decoration: none; font-weight: 600; font-size: 15px; transition: background 0.2s; }
+        .menu-item { background: var(--bg-card); padding: 16px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; color: var(--text-main); text-decoration: none; font-weight: 600; font-size: 15px; transition: background 0.2s; cursor: pointer; }
         .menu-item:hover { background: #1a1a1a; }
         .menu-item-left { display: flex; align-items: center; gap: 16px; }
         .logout-btn { background: #2a0e0e; color: #ff4444; text-align: center; justify-content: center; margin-top: 24px; padding: 16px; border-radius: 8px; font-weight: 700; cursor: pointer; display: block; border: none; width: 100%; font-size: 16px; }
 
+        /* 🔥 NEW: Sub-page specific CSS (Downloads & History) */
+        .back-text-btn { color: var(--accent); text-decoration: none; font-weight: 700; margin-bottom: 16px; display: inline-block; font-size: 16px; background: none; border: none; cursor: pointer; padding: 0; }
+        .settings-card { background-color: var(--bg-card); border-radius: 12px; padding: 20px; margin-bottom: 20px; max-width: 600px;}
+        .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .setting-row:last-child { margin-bottom: 0; }
+        .setting-info h3 { margin: 0 0 6px 0; font-size: 16px; font-weight: 600; color: #fff; }
+        .setting-info p { margin: 0; font-size: 13px; color: var(--text-sub); }
+        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .2s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(22px); }
+        select.custom-select { background-color: #1e1e1e; color: #fff; border: 1px solid #333; padding: 8px 12px; border-radius: 6px; font-size: 14px; outline: none; cursor: pointer; }
+        .storage-bar-container { width: 100%; height: 8px; background-color: #333; border-radius: 4px; margin-top: 12px; overflow: hidden; }
+        .storage-fill { height: 100%; width: 15%; background-color: var(--accent); }
+        .danger-btn { background-color: #1e1e1e; color: #ff3b30; border: 1px solid #333333; border-radius: 8px; padding: 16px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; max-width: 600px; transition: background-color 0.2s; margin-top: 10px; display: block; }
+        .danger-btn:active { background-color: #2a2a2a; }
+
         /* Persistent Bottom Player Console */
         .playback-console-bar { height: 90px; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(15px); border-top: 1px solid #282828; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; position: fixed; bottom: 0; left: 0; right: 0; z-index: 999; cursor: pointer; }
-
-        /* 🔥 FIXED: Flexbox shrink logic to ensure mobile buttons NEVER get hidden */
         .track-metadata-block { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 30%; min-width: 180px; }
         .meta-text-details { min-width: 0; flex: 1; overflow: hidden; }
         .meta-right-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-
         .meta-artwork-frame { width: 56px; height: 56px; background-color: #282828; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); flex-shrink: 0; }
         .meta-track-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .meta-artist-name { font-size: 12px; color: var(--text-sub); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -206,8 +222,11 @@
                 <h1 style="font-size: 32px; font-weight: 800; margin-bottom: 24px;">Settings</h1>
                 <div class="menu-list">
                     <a href="account.html" class="menu-item"><div class="menu-item-left">👤 Account</div> <div>></div></a>
-                    <a href="downloadsetting.html" class="menu-item"><div class="menu-item-left">⬇️ Downloads</div> <div>></div></a>
-                    <a href="playhistory.html" class="menu-item"><div class="menu-item-left">🕒 Play History</div> <div>></div></a>
+                    
+                    <!-- 🔥 FIXED: Navigates inside the SPA perfectly -->
+                    <a href="#" onclick="showSection('downloads'); return false;" class="menu-item"><div class="menu-item-left">⬇️ Downloads</div> <div>></div></a>
+                    <a href="#" onclick="showSection('playHistory'); return false;" class="menu-item"><div class="menu-item-left">🕒 Play History</div> <div>></div></a>
+                    
                     <a href="privacy.html" class="menu-item"><div class="menu-item-left">🔒 Privacy</div> <div>></div></a>
                     <a href="#" class="menu-item"><div class="menu-item-left">🌌 AI References <span style="color:var(--accent); font-size:12px; margin-left:8px;">(Soon)</span></div> <div>></div></a>
                     <a href="refer.html" class="menu-item"><div class="menu-item-left">🎁 Refer</div> <div>></div></a>
@@ -215,11 +234,63 @@
                     <button class="logout-btn" onclick="handleLogout()">Log Out</button>
                 </div>
             </section>
+
+            <!-- 🔥 NEW: Play History Section integrated -->
+            <section id="playHistorySection" class="hidden">
+                <button class="back-text-btn" onclick="showSection('settings')">← Back to Settings</button>
+                <h1 style="font-size: 28px; font-weight: 800; margin-bottom: 24px;">Listening History</h1>
+                <div id="history-list">
+                    <p style="color:#a7a7a7;">Loading your history...</p>
+                </div>
+            </section>
+
+            <!-- 🔥 NEW: Downloads Section integrated -->
+            <section id="downloadsSection" class="hidden">
+                <button class="back-text-btn" onclick="showSection('settings')">← Back to Settings</button>
+                <h1 style="font-size: 28px; font-weight: 800; margin-bottom: 24px;">Download Settings</h1>
+                
+                <div class="settings-card">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <h3>Download over Wi-Fi only</h3>
+                            <p>Save your mobile data</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked id="wifiToggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <h3>Audio Quality</h3>
+                            <p>Higher quality uses more space</p>
+                        </div>
+                        <select class="custom-select" id="qualitySelect">
+                            <option value="high">High</option>
+                            <option value="standard" selected>Standard</option>
+                            <option value="low">Data Saver</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-card">
+                    <div class="setting-info">
+                        <h3>Storage</h3>
+                        <p>15% used by Shinzi Music downloads</p>
+                    </div>
+                    <div class="storage-bar-container">
+                        <div class="storage-fill"></div>
+                    </div>
+                </div>
+
+                <button class="danger-btn" onclick="clearDownloads()">Clear All Downloads</button>
+            </section>
+
         </main>
     </div>
 
-    <!-- 🔥 FIXED: The bottom player now correctly groups the heart and play button to survive long titles -->
-    <!-- 🔥 FIXED: starts with hidden-player class applied -->
+    <!-- Bottom Player -->
     <footer class="playback-console-bar hidden-player" id="mainPlayerBar">
         <div class="track-metadata-block">
             <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
@@ -323,6 +394,12 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // Dummy function for clearing downloads
+        window.clearDownloads = () => {
+            const confirmed = confirm("Are you sure you want to delete all downloaded music from this device?");
+            if(confirmed) { alert("All local downloads cleared."); }
+        };
+
         window.syncFavoritesToCloud = async (favorites) => {
             const user = auth.currentUser;
             if (user) { await setDoc(doc(db, "users", user.uid), { favorites: favorites }, { merge: true }); }
@@ -351,8 +428,30 @@
 
                 try {
                     const userDoc = await getDoc(doc(db, "users", user.uid));
-                    if (userDoc.exists() && userDoc.data().favorites) {
-                        if (window.loadCloudFavorites) window.loadCloudFavorites(userDoc.data().favorites);
+                    if (userDoc.exists()) {
+                        const data = userDoc.data();
+                        
+                        // Load Favorites
+                        if (data.favorites && window.loadCloudFavorites) {
+                            window.loadCloudFavorites(data.favorites);
+                        }
+
+                        // 🔥 Load History into the new section!
+                        const historyContainer = document.getElementById("history-list");
+                        if (data.history && data.history.length > 0) {
+                            // Map it to look exactly like the old search items, and make it clickable!
+                            historyContainer.innerHTML = data.history.reverse().map(song => `
+                                <div class="search-item" onclick="playVideo('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.channel.replace(/'/g, "\\'")}', '${song.thumb}')">
+                                    <img class="search-thumb" src="${song.thumb}" onerror="this.src='https://img.youtube.com/vi/default/0.jpg'">
+                                    <div class="search-info">
+                                        <div class="search-title">${song.title}</div>
+                                        <div class="search-channel">${song.channel}</div>
+                                    </div>
+                                </div>
+                            `).join("");
+                        } else {
+                            historyContainer.innerHTML = "<p style='color:#a7a7a7;'>No history yet. Start playing some music!</p>";
+                        }
                     }
                 } catch(e) { console.error("Cloud sync error", e); }
             } else {
@@ -365,4 +464,4 @@
         };
     </script>
 </body>
-  </html>
+</html>
