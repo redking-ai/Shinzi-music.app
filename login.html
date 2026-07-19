@@ -3,119 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Shinzi Music</title>
+    <title>Login - Shinzi Music App</title>
     <style>
-        body {
-            margin: 0;
-            background-color: #090909;
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-top: 10vh;
-            height: 100vh;
-            box-sizing: border-box;
-        }
-        .container {
-            width: 85%;
-            max-width: 380px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .logo {
-            width: 80px;
-            height: auto;
-            margin-bottom: 20px;
-        }
-        h2 {
-            font-size: 24px;
-            font-weight: 700;
-            margin: 0 0 30px 0;
-        }
-        .input-group {
-            width: 100%;
-            margin-bottom: 16px;
-        }
-        input {
-            width: 100%;
-            padding: 16px;
-            background-color: #1e1e1e;
-            border: 1px solid #333333;
-            color: #ffffff;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 15px;
-        }
-        input:focus {
-            outline: none;
-            border-color: #1db954;
-        }
-        input::placeholder {
-            color: #757575;
-        }
-        .action-btn {
-            width: 100%;
-            padding: 16px;
-            background-color: #1db954;
-            color: #000000;
-            font-size: 16px;
-            font-weight: bold;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: background 0.2s;
-        }
-        .action-btn:active {
-            background-color: #1aa34a;
-        }
-        .divider {
-            color: #a0a0a0;
-            font-size: 13px;
-            margin: 25px 0;
-            text-transform: uppercase;
-        }
-        .google-btn {
-            width: 100%;
-            padding: 16px;
-            background-color: #ffffff;
-            color: #000000;
-            font-size: 16px;
-            font-weight: bold;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            transition: opacity 0.2s;
-        }
-        .google-btn:active {
-            opacity: 0.8;
-        }
-        .google-btn img {
-            width: 22px;
-        }
-        .switch-text {
-            margin-top: 30px;
-            font-size: 14px;
-            color: #b3b3b3;
-        }
-        .switch-text a {
-            color: #1db954;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .error {
-            color: #ff3b30;
-            font-size: 13px;
-            margin-top: 12px;
-            display: none;
-        }
+        body { margin: 0; background-color: #090909; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; align-items: center; padding-top: 10vh; height: 100vh; box-sizing: border-box; }
+        .container { width: 85%; max-width: 380px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .logo { width: 80px; height: auto; margin-bottom: 20px; }
+        h2 { font-size: 24px; font-weight: 700; margin: 0 0 30px 0; }
+        .input-group { width: 100%; margin-bottom: 16px; }
+        input { width: 100%; padding: 16px; background-color: #1e1e1e; border: 1px solid #333333; color: #ffffff; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
+        input:focus { outline: none; border-color: #1db954; }
+        input::placeholder { color: #757575; }
+        .action-btn { width: 100%; padding: 16px; background-color: #1db954; color: #000000; font-size: 16px; font-weight: bold; border: none; border-radius: 30px; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
+        .action-btn:active { background-color: #1aa34a; }
+        .divider { color: #a0a0a0; font-size: 13px; margin: 25px 0; text-transform: uppercase; }
+        .google-btn { width: 100%; padding: 16px; background-color: #ffffff; color: #000000; font-size: 16px; font-weight: bold; border: none; border-radius: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: opacity 0.2s; }
+        .google-btn:active { opacity: 0.8; }
+        .google-btn img { width: 22px; }
+        .switch-text { margin-top: 30px; font-size: 14px; color: #b3b3b3; }
+        .switch-text a { color: #1db954; text-decoration: none; font-weight: bold; }
+        .error { color: #ff3b30; font-size: 13px; margin-top: 12px; display: none; }
     </style>
 </head>
 <body>
@@ -136,6 +42,7 @@
 
         <div class="divider">OR</div>
 
+        <!-- APP FIX: Triggers Redirect instead of Popup -->
         <button class="google-btn" onclick="handleGoogleLogin()">
             <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
             Log in with Google
@@ -148,7 +55,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        // 🔥 APP FIX: Imported signInWithRedirect and getRedirectResult
+        import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: ['AIzaSyA9', '-BquJOixe2dku', 'MA4OR_LH_', '-4kqcFrRE'].join(''),
@@ -159,8 +67,6 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const googleProvider = new GoogleAuthProvider();
-
-        // YOUR SHINZI AI FIX: Force the account selection popup
         googleProvider.setCustomParameters({ prompt: "select_account" });
 
         const errorMsg = document.getElementById('error-msg');
@@ -170,6 +76,12 @@
             if (user) {
                 window.location.href = "index.html";
             }
+        });
+
+        // 🔥 APP FIX: Catcher for when the app comes back from the Google redirect screen
+        getRedirectResult(auth).catch((error) => {
+            errorMsg.textContent = "Google login failed: " + error.message;
+            errorMsg.style.display = "block";
         });
 
         // Standard Email Login
@@ -184,26 +96,18 @@
                 return;
             }
 
-            signInWithEmailAndPassword(auth, email, password)
-                .catch(() => {
-                    errorMsg.textContent = "Invalid email or password.";
-                    errorMsg.style.display = "block";
-                });
+            signInWithEmailAndPassword(auth, email, password).catch(() => {
+                errorMsg.textContent = "Invalid email or password.";
+                errorMsg.style.display = "block";
+            });
         };
 
-        // SHINZI AI METHOD: Popup Google Login
-        window.handleGoogleLogin = async () => {
-            try {
-                const result = await signInWithPopup(auth, googleProvider);
-                console.log("Login success:", result.user.email);
-            } catch (err) {
-                if (err.code !== "auth/popup-closed-by-user") {
-                    console.error("Login error:", err);
-                    errorMsg.textContent = "Google login failed: " + err.message;
-                    errorMsg.style.display = "block";
-                }
-            }
+        // 🔥 APP FIX: Triggers full-page redirect for mobile apps
+        window.handleGoogleLogin = () => {
+            errorMsg.style.display = "none";
+            signInWithRedirect(auth, googleProvider);
         };
     </script>
 </body>
 </html>
+ 
