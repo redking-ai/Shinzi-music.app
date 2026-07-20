@@ -61,9 +61,13 @@ function loadYTApi() {
 
 window.onYouTubeIframeAPIReady = function () {
   ytPlayer = new YT.Player("ytPlayer", {
-    // 🔥 FIX #3: Changed from "1" to "200" so Android doesn't block it!
     height: "200", width: "200",
-    playerVars: { autoplay: 0, controls: 0 },
+    playerVars: { 
+        autoplay: 0, 
+        controls: 0,
+        playsinline: 1, // 🔥 CLAUDE'S INLINE FIX
+        origin: 'https://redking-ai.github.io' // 🔥 CLAUDE'S ORIGIN BYPASS
+    },
     events: {
       onReady: () => { 
           ytReady = true; 
