@@ -1,8 +1,10 @@
 const BACKEND_SEARCH_URL = "https://shinzi-proxy.vercel.app/music/search";
+const BACKEND_STREAM_URL = "https://shinzi-proxy.vercel.app/music/stream";
 
-// ─── STATE ────────────────────────────────────────────────
-let ytPlayer = null;
-let ytReady = false;
+// ─── STATE & NATIVE AUDIO ENGINE ──────────────────────────
+const audioPlayer = new Audio();
+audioPlayer.volume = 1.0;
+
 let currentQueue = [];
 let currentIndex = -1;
 let isPlaying = false;
@@ -52,69 +54,58 @@ function renderFavoritesList() {
   `).join("");
 }
 
-// ─── YOUTUBE IFRAME API ───────────────────────────────────
-function loadYTApi() {
-  const tag = document.createElement("script");
-  tag.src = "https://www.youtube.com/iframe_api";
-  document.head.appendChild(tag);
-}
+// ─── NATIVE AUDIO EVENT LISTENERS ─────────────────────────
+audioPlayer.addEventListener("timeupdate", updateProgress);
 
-window.onYouTubeIframeAPIReady = function () {
-  ytPlayer = new YT.Player("ytPlayer", {
-    height: "200", width: "200",
-    playerVars: { 
-        autoplay: 0, 
-        controls: 0,
-        playsinline: 1, // 🔥 CLAUDE'S INLINE FIX
-        origin: 'https://redking-ai.github.io' // 🔥 CLAUDE'S ORIGIN BYPASS
-    },
-    events: {
-      onReady: () => { 
-          ytReady = true; 
-          ytPlayer.setVolume(100); 
-          if (window.pendingCue) {
-              ytPlayer.cueVideoById(window.pendingCue);
-              window.pendingCue = null;
-          }
-      },
-      onStateChange: onPlayerStateChange,
-    },
-  });
-};
+audioPlayer.addEventListener("play", () => {
+  isPlaying = true;
+  updatePlayPauseBtn();
+});
 
-function onPlayerStateChange(e) {
-  if (e.data === YT.PlayerState.PLAYING) {
-    isPlaying = true;
-    updatePlayPauseBtn();
-    startProgressUpdate();
-  } else if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.CUED) {
-    isPlaying = false;
-    updatePlayPauseBtn();
-    stopProgressUpdate();
-  } else if (e.data === YT.PlayerState.ENDED) {
-    if (isRepeat) { ytPlayer.seekTo(0); ytPlayer.playVideo(); } 
-    else { playNext(); }
+audioPlayer.addEventListener("pause", () => {
+  isPlaying = false;
+  updatePlayPauseBtn();
+});
+
+audioPlayer.addEventListener("ended", () => {
+  if (isRepeat) {
+    audioPlayer.currentTime = 0;
+    audioPlayer.play().catch(err => console.error("Playback replay failed", err));
+  } else {
+    playNext();
   }
-}
+});
 
-// ─── PLAY LOGIC ───────────────────────────────────────────
-function playVideo(videoId, title, channel, thumb) {
-  if (!ytReady) { alert("Player loading, try again in a few seconds!"); return; }
-
+// ─── PLAY LOGIC (THE BACKEND STREAM BYPASS) ────────────────
+async function playVideo(videoId, title, channel, thumb) {
+  // Unhide the player bar when a user manually clicks a song
   document.getElementById('mainPlayerBar')?.classList.remove('hidden-player');
-  localStorage.setItem('shinzi_last_played', JSON.stringify({id: videoId, title: title, channel: channel, thumb: thumb}));
 
-  ytPlayer.loadVideoById(videoId);
-  ytPlayer.setVolume(100); 
+  // Save the song to localStorage so the app remembers it for next time
+  localStorage.setItem('shinzi_last_played', JSON.stringify({id: videoId, title: title, channel: channel, thumb: thumb}));
 
   updateNowPlaying(title, channel, thumb);
   if (window.syncHistoryToCloud) {
       window.syncHistoryToCloud({ id: videoId, title: title, channel: channel, thumb: thumb });
   }
 
-  isPlaying = true;
-  updatePlayPauseBtn();
   checkIfFavorite();
+
+  try {
+    // 🚀 HIT YOUR AD-FREE STREAM EXTRACTOR ROUTE
+    const res = await fetch(`${BACKEND_STREAM_URL}?id=${videoId}`);
+    const data = await res.json();
+
+    if (data.audioUrl) {
+      audioPlayer.src = data.audioUrl;
+      await audioPlayer.play();
+    } else {
+      alert("Stream extraction failed. Try another track.");
+    }
+  } catch (err) {
+    console.error("Audio streaming error:", err);
+    alert("Streaming service busy. Try again.");
+  }
 }
 
 function updateNowPlaying(title, channel, thumb) {
@@ -142,9 +133,12 @@ function updateNowPlaying(title, channel, thumb) {
 }
 
 function togglePlayPause() {
-  if (!ytReady || currentIndex === -1) return;
-  if (isPlaying) ytPlayer.pauseVideo();
-  else ytPlayer.playVideo();
+  if (!audioPlayer.src) return;
+  if (isPlaying) {
+    audioPlayer.pause();
+  } else {
+    audioPlayer.play().catch(err => console.error("Playback failed", err));
+  }
 }
 
 function updatePlayPauseBtn() {
@@ -199,13 +193,10 @@ function playPrev() {
 }
 
 // ─── PROGRESS BAR SYNC ────────────────────────────────────
-function startProgressUpdate() { stopProgressUpdate(); progressInterval = setInterval(updateProgress, 500); }
-function stopProgressUpdate() { if (progressInterval) clearInterval(progressInterval); }
-
 function updateProgress() {
-  if (!ytReady || !ytPlayer.getCurrentTime) return;
-  const current = ytPlayer.getCurrentTime() || 0;
-  const total = ytPlayer.getDuration() || 0;
+  if (!audioPlayer.src) return;
+  const current = audioPlayer.currentTime || 0;
+  const total = audioPlayer.duration || 0;
   const pct = total > 0 ? (current / total) * 100 : 0;
 
   if (document.getElementById("progressFill")) document.getElementById("progressFill").style.width = pct + "%";
@@ -221,14 +212,14 @@ document.getElementById("progressBar")?.addEventListener("click", seekAudio);
 document.getElementById("innerProgressBar")?.addEventListener("click", seekAudio);
 
 function seekAudio(e) {
-  if (!ytReady) return;
+  if (!audioPlayer.src || !audioPlayer.duration) return;
   const bar = e.currentTarget;
   const pct = e.offsetX / bar.offsetWidth;
-  const total = ytPlayer.getDuration() || 0;
-  ytPlayer.seekTo(pct * total, true);
+  audioPlayer.currentTime = pct * audioPlayer.duration;
 }
 
 function formatTime(sec) {
+  if (isNaN(sec)) return "0:00";
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
@@ -419,11 +410,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       updateNowPlaying(lastPlayedTrack.title, lastPlayedTrack.channel, lastPlayedTrack.thumb);
       currentQueue = [lastPlayedTrack];
       currentIndex = 0;
-      window.pendingCue = lastPlayedTrack.id; 
+      
+      // Prime the native audio loader invisibly with your backend extractor link
+      try {
+        const res = await fetch(`${BACKEND_STREAM_URL}?id=${lastPlayedTrack.id}`);
+        const data = await res.json();
+        if (data.audioUrl) {
+          audioPlayer.src = data.audioUrl;
+        }
+      } catch(e) { console.warn("Could not prime last track", e); }
+      
       checkIfFavorite();
   }
 
-  loadYTApi();
   await loadFeed("Top Hindi Songs", "madeForYou");
   await loadFeed("Trending Music India", "trendingRow");
   await loadFeed("Anime OST", "animeRow");
