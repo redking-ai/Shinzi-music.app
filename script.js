@@ -61,13 +61,13 @@ function loadYTApi() {
 
 window.onYouTubeIframeAPIReady = function () {
   ytPlayer = new YT.Player("ytPlayer", {
-    height: "1", width: "1",
+    // 🔥 FIX #3: Changed from "1" to "200" so Android doesn't block it!
+    height: "200", width: "200",
     playerVars: { autoplay: 0, controls: 0 },
     events: {
       onReady: () => { 
           ytReady = true; 
           ytPlayer.setVolume(100); 
-          // 🔥 Load the ghost track into memory so the play button works instantly
           if (window.pendingCue) {
               ytPlayer.cueVideoById(window.pendingCue);
               window.pendingCue = null;
@@ -97,10 +97,7 @@ function onPlayerStateChange(e) {
 function playVideo(videoId, title, channel, thumb) {
   if (!ytReady) { alert("Player loading, try again in a few seconds!"); return; }
 
-  // 🔥 Unhide the player bar when a user manually clicks a song
   document.getElementById('mainPlayerBar')?.classList.remove('hidden-player');
-
-  // 🔥 Save the song to localStorage so the app remembers it for next time
   localStorage.setItem('shinzi_last_played', JSON.stringify({id: videoId, title: title, channel: channel, thumb: thumb}));
 
   ytPlayer.loadVideoById(videoId);
@@ -154,7 +151,6 @@ function updatePlayPauseBtn() {
 
   const mobilePlay = document.getElementById("mobilePlayBtn");
   if(mobilePlay) {
-    // 🔥 FIXED: Toggles beautifully between Play and Pause on mobile!
     mobilePlay.innerHTML = isPlaying 
       ? `<svg viewBox="0 0 24 24" fill="#fff" width="32" height="32"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>` 
       : `<svg viewBox="0 0 24 24" fill="#fff" width="32" height="32"><path d="M8 5v14l11-7z"/></svg>`;
@@ -289,7 +285,6 @@ if (searchInput) {
 }
 
 window.showSection = function(name) {
-  // 🔥 FIXED: Array now includes the new hidden pages so the navigation works perfectly!
   const sections = ["home", "search", "library", "settings", "playHistory", "downloads"];
 
   sections.forEach(sec => {
@@ -414,14 +409,13 @@ document.querySelectorAll(".quick-card").forEach(card => {
 document.addEventListener("DOMContentLoaded", async () => {
   renderFavoritesList();
 
-  // 🔥 THE SPOTIFY MEMORY FIX
   const lastPlayedTrack = JSON.parse(localStorage.getItem('shinzi_last_played'));
   if (lastPlayedTrack) {
       document.getElementById('mainPlayerBar')?.classList.remove('hidden-player');
       updateNowPlaying(lastPlayedTrack.title, lastPlayedTrack.channel, lastPlayedTrack.thumb);
       currentQueue = [lastPlayedTrack];
       currentIndex = 0;
-      window.pendingCue = lastPlayedTrack.id; // Primes the play button invisibly
+      window.pendingCue = lastPlayedTrack.id; 
       checkIfFavorite();
   }
 
