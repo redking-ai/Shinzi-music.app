@@ -3,7 +3,7 @@ const BACKEND_SEARCH_URL = "https://shinzi-proxy.vercel.app/music/search";
 // ─── SHINZI MUSIC NATIVE AUDIO ENGINE ─────────
 const audioPlayer = new Audio();
 // Your actual Render backend URL!
-const RENDER_BACKEND_URL = "https://shinzi-music-backend.onrender.com";
+const RENDER_BACKEND_URL = "https://shinzi-music-backend-.onrender.com";
 
 let currentQueue = [];
 let currentIndex = -1;
