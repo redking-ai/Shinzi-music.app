@@ -1,56 +1,56 @@
 const BACKEND_SEARCH_URL = "https://shinzi-proxy.vercel.app/music/search";
 
-// ─── YOUTUBE IFRAME API SETUP (THE BULLETPROOF METHOD) ─────────
-let ytPlayer = null;
-let ytReady = false;
-let pendingVideo = null;
+// ─── SHINZI MUSIC NATIVE AUDIO ENGINE ─────────
+const audioPlayer = new Audio();
+// Your actual Render backend URL!
+const RENDER_BACKEND_URL = "https://shinzi-music-backend.onrender.com";
 
 let currentQueue = [];
 let currentIndex = -1;
 let isPlaying = false;
 let isShuffle = false;
 let isRepeat = false;
-let progressInterval = null;
 
-// 1. Dynamically create the hidden YouTube container (250x250px to bypass Android blocks)
-const playerContainer = document.createElement('div');
-playerContainer.id = 'ytPlayerDom';
-playerContainer.style.position = 'fixed';
-playerContainer.style.top = '0';
-playerContainer.style.left = '0';
-playerContainer.style.width = '250px';
-playerContainer.style.height = '250px';
-playerContainer.style.zIndex = '-99';       // Hides it behind your app
-playerContainer.style.opacity = '0.01';     // Keeps it rendered for Android, invisible to user
-playerContainer.style.pointerEvents = 'none';
-document.body.appendChild(playerContainer);
+// --- Native Audio Event Listeners ---
+audioPlayer.addEventListener('play', () => {
+    isPlaying = true;
+    updatePlayPauseBtn();
+});
 
-// 2. Load the Official YouTube IFrame API script
-const tag = document.createElement('script');
-tag.src = "https://www.youtube.com/iframe_api";
-const firstScriptTag = document.getElementsByTagName('script')[0];
-firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+audioPlayer.addEventListener('pause', () => {
+    isPlaying = false;
+    updatePlayPauseBtn();
+});
 
-// 3. Initialize the Player
-window.onYouTubeIframeAPIReady = function() {
-  ytPlayer = new YT.Player('ytPlayerDom', {
-    height: '250',
-    width: '250',
-    playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1 },
-    events: {
-      'onReady': (e) => {
-        ytReady = true;
-        console.log("Official YouTube API Locked and Loaded!");
-        if (pendingVideo) {
-          playVideo(pendingVideo.id, pendingVideo.title, pendingVideo.channel, pendingVideo.thumb);
-          pendingVideo = null;
-        }
-      },
-      'onStateChange': onPlayerStateChange,
-      'onError': (e) => console.error("YT Player Error:", e.data)
+audioPlayer.addEventListener('ended', () => {
+    if (isRepeat) {
+        audioPlayer.currentTime = 0;
+        audioPlayer.play();
+    } else {
+        playNext();
     }
-  });
-};
+});
+
+// Replaces the old setInterval method, much smoother!
+audioPlayer.addEventListener('timeupdate', () => {
+    const current = audioPlayer.currentTime || 0;
+    const total = audioPlayer.duration || 0;
+    const pct = total > 0 ? (current / total) * 100 : 0;
+
+    if (document.getElementById("progressFill")) document.getElementById("progressFill").style.width = pct + "%";
+    if (document.getElementById("currentTime")) document.getElementById("currentTime").textContent = formatTime(current);
+    
+    // Only update total time if it's a valid number
+    if (document.getElementById("totalTime") && total > 0 && !isNaN(total) && total !== Infinity) {
+        document.getElementById("totalTime").textContent = formatTime(total);
+    }
+
+    if (document.getElementById("innerProgressFill")) document.getElementById("innerProgressFill").style.width = pct + "%";
+    if (document.getElementById("innerCurrentTime")) document.getElementById("innerCurrentTime").textContent = formatTime(current);
+    if (document.getElementById("innerTotalTime") && total > 0 && !isNaN(total) && total !== Infinity) {
+        document.getElementById("innerTotalTime").textContent = formatTime(total);
+    }
+});
 
 // ─── FALLBACK DATA ───
 const fallbackTracks = [
@@ -93,7 +93,7 @@ function renderFavoritesList() {
   `).join("");
 }
 
-// ─── PLAY LOGIC (NO BACKEND NEEDED) ───────────────────────
+// ─── PLAY LOGIC (NOW USING RENDER BACKEND) ───────────────────────
 function playVideo(videoId, title, channel, thumb) {
   document.getElementById('mainPlayerBar')?.classList.remove('hidden-player');
   localStorage.setItem('shinzi_last_played', JSON.stringify({id: videoId, title, channel, thumb}));
@@ -102,33 +102,11 @@ function playVideo(videoId, title, channel, thumb) {
   if (window.syncHistoryToCloud) window.syncHistoryToCloud({ id: videoId, title, channel, thumb });
   checkIfFavorite();
 
-  // If the user clicks a song before the YouTube API finishes loading, save it to play next
-  if (!ytReady || !ytPlayer) {
-    pendingVideo = { id: videoId, title, channel, thumb };
-    return;
-  }
-  
-  // 🚀 Tell the Official API to stream the track instantly
-  ytPlayer.loadVideoById(videoId);
-}
-
-function onPlayerStateChange(event) {
-  if (event.data === YT.PlayerState.PLAYING) {
-    isPlaying = true;
-    updatePlayPauseBtn();
-    startProgressTracker();
-  } else if (event.data === YT.PlayerState.PAUSED) {
-    isPlaying = false;
-    updatePlayPauseBtn();
-    stopProgressTracker();
-  } else if (event.data === YT.PlayerState.ENDED) {
-    if (isRepeat) { 
-        ytPlayer.seekTo(0); 
-        ytPlayer.playVideo(); 
-    } else { 
-        playNext(); 
-    }
-  }
+  // 🚀 Tell the native Audio player to stream from your Render API
+  audioPlayer.src = `${RENDER_BACKEND_URL}/stream?id=${videoId}`;
+  audioPlayer.play().catch(err => {
+      console.error("Playback error (Render might be waking up):", err);
+  });
 }
 
 function updateNowPlaying(title, channel, thumb) {
@@ -156,11 +134,11 @@ function updateNowPlaying(title, channel, thumb) {
 }
 
 function togglePlayPause() {
-  if (!ytReady || !ytPlayer) return;
-  if (isPlaying) {
-    ytPlayer.pauseVideo();
+  if (!audioPlayer.src) return;
+  if (audioPlayer.paused) {
+    audioPlayer.play();
   } else {
-    ytPlayer.playVideo();
+    audioPlayer.pause();
   }
 }
 
@@ -216,43 +194,21 @@ function playPrev() {
 }
 
 // ─── PROGRESS BAR SYNC ────────────────────────────────────
-function startProgressTracker() {
-  stopProgressTracker();
-  progressInterval = setInterval(updateProgress, 500);
-}
-
-function stopProgressTracker() {
-  clearInterval(progressInterval);
-}
-
-function updateProgress() {
-  if (!ytReady || !ytPlayer || !isPlaying) return;
-  const current = ytPlayer.getCurrentTime() || 0;
-  const total = ytPlayer.getDuration() || 0;
-  const pct = total > 0 ? (current / total) * 100 : 0;
-
-  if (document.getElementById("progressFill")) document.getElementById("progressFill").style.width = pct + "%";
-  if (document.getElementById("currentTime")) document.getElementById("currentTime").textContent = formatTime(current);
-  if (document.getElementById("totalTime")) document.getElementById("totalTime").textContent = formatTime(total);
-
-  if (document.getElementById("innerProgressFill")) document.getElementById("innerProgressFill").style.width = pct + "%";
-  if (document.getElementById("innerCurrentTime")) document.getElementById("innerCurrentTime").textContent = formatTime(current);
-  if (document.getElementById("innerTotalTime")) document.getElementById("innerTotalTime").textContent = formatTime(total);
-}
-
 document.getElementById("progressBar")?.addEventListener("click", seekAudio);
 document.getElementById("innerProgressBar")?.addEventListener("click", seekAudio);
 
 function seekAudio(e) {
-  if (!ytReady || !ytPlayer) return;
+  if (!audioPlayer.src) return;
   const bar = e.currentTarget;
   const pct = e.offsetX / bar.offsetWidth;
-  const total = ytPlayer.getDuration() || 0;
-  ytPlayer.seekTo(pct * total, true);
+  const total = audioPlayer.duration || 0;
+  if (total > 0 && !isNaN(total) && total !== Infinity) {
+      audioPlayer.currentTime = pct * total;
+  }
 }
 
 function formatTime(sec) {
-  if (isNaN(sec)) return "0:00";
+  if (isNaN(sec) || sec === Infinity) return "0:00";
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
@@ -443,9 +399,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       updateNowPlaying(lastPlayedTrack.title, lastPlayedTrack.channel, lastPlayedTrack.thumb);
       currentQueue = [lastPlayedTrack];
       currentIndex = 0;
-      
-      // Stage the video in the background instantly
-      pendingVideo = lastPlayedTrack;
       checkIfFavorite();
   }
 
