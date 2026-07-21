@@ -1,9 +1,9 @@
 const BACKEND_SEARCH_URL = "https://shinzi-proxy.vercel.app/music/search";
-const BACKEND_STREAM_URL = "https://shinzi-proxy.vercel.app/music/stream";
 
-// ─── STATE & NATIVE AUDIO ENGINE ──────────────────────────
-const audioPlayer = new Audio();
-audioPlayer.volume = 1.0;
+// ─── YOUTUBE IFRAME API SETUP (THE BULLETPROOF METHOD) ─────────
+let ytPlayer = null;
+let ytReady = false;
+let pendingVideo = null;
 
 let currentQueue = [];
 let currentIndex = -1;
@@ -12,13 +12,52 @@ let isShuffle = false;
 let isRepeat = false;
 let progressInterval = null;
 
+// 1. Dynamically create the hidden YouTube container (250x250px to bypass Android blocks)
+const playerContainer = document.createElement('div');
+playerContainer.id = 'ytPlayerDom';
+playerContainer.style.position = 'fixed';
+playerContainer.style.top = '0';
+playerContainer.style.left = '0';
+playerContainer.style.width = '250px';
+playerContainer.style.height = '250px';
+playerContainer.style.zIndex = '-99';       // Hides it behind your app
+playerContainer.style.opacity = '0.01';     // Keeps it rendered for Android, invisible to user
+playerContainer.style.pointerEvents = 'none';
+document.body.appendChild(playerContainer);
+
+// 2. Load the Official YouTube IFrame API script
+const tag = document.createElement('script');
+tag.src = "https://www.youtube.com/iframe_api";
+const firstScriptTag = document.getElementsByTagName('script')[0];
+firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+// 3. Initialize the Player
+window.onYouTubeIframeAPIReady = function() {
+  ytPlayer = new YT.Player('ytPlayerDom', {
+    height: '250',
+    width: '250',
+    playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1 },
+    events: {
+      'onReady': (e) => {
+        ytReady = true;
+        console.log("Official YouTube API Locked and Loaded!");
+        if (pendingVideo) {
+          playVideo(pendingVideo.id, pendingVideo.title, pendingVideo.channel, pendingVideo.thumb);
+          pendingVideo = null;
+        }
+      },
+      'onStateChange': onPlayerStateChange,
+      'onError': (e) => console.error("YT Player Error:", e.data)
+    }
+  });
+};
+
 // ─── FALLBACK DATA ───
 const fallbackTracks = [
   { id: "UxxajLWwzqY", title: "Jujutsu Kaisen - SPECIALZ", channel: "TOHO animation", thumb: "https://img.youtube.com/vi/UxxajLWwzqY/0.jpg" },
   { id: "lz157kuOMC8", title: "Live Another Day", channel: "KORDHELL", thumb: "https://img.youtube.com/vi/lz157kuOMC8/0.jpg" },
   { id: "w-sQRS-Lc9k", title: "Murder In My Mind", channel: "KORDHELL", thumb: "https://img.youtube.com/vi/w-sQRS-Lc9k/0.jpg" },
-  { id: "60ItHLz5WEA", title: "Faded", channel: "Alan Walker", thumb: "https://img.youtube.com/vi/60ItHLz5WEA/0.jpg" },
-  { id: "7aMOurgDB-o", title: "Tokyo Ghoul - Unravel", channel: "Anime Vibes", thumb: "https://img.youtube.com/vi/7aMOurgDB-o/0.jpg" }
+  { id: "60ItHLz5WEA", title: "Faded", channel: "Alan Walker", thumb: "https://img.youtube.com/vi/60ItHLz5WEA/0.jpg" }
 ];
 
 // ─── FAVORITES DATABASE ───────────────────────────────────
@@ -54,57 +93,41 @@ function renderFavoritesList() {
   `).join("");
 }
 
-// ─── NATIVE AUDIO EVENT LISTENERS ─────────────────────────
-audioPlayer.addEventListener("timeupdate", updateProgress);
-
-audioPlayer.addEventListener("play", () => {
-  isPlaying = true;
-  updatePlayPauseBtn();
-});
-
-audioPlayer.addEventListener("pause", () => {
-  isPlaying = false;
-  updatePlayPauseBtn();
-});
-
-audioPlayer.addEventListener("ended", () => {
-  if (isRepeat) {
-    audioPlayer.currentTime = 0;
-    audioPlayer.play().catch(err => console.error("Playback replay failed", err));
-  } else {
-    playNext();
-  }
-});
-
-// ─── PLAY LOGIC (THE BACKEND STREAM BYPASS) ────────────────
-async function playVideo(videoId, title, channel, thumb) {
-  // Unhide the player bar when a user manually clicks a song
+// ─── PLAY LOGIC (NO BACKEND NEEDED) ───────────────────────
+function playVideo(videoId, title, channel, thumb) {
   document.getElementById('mainPlayerBar')?.classList.remove('hidden-player');
-
-  // Save the song to localStorage so the app remembers it for next time
-  localStorage.setItem('shinzi_last_played', JSON.stringify({id: videoId, title: title, channel: channel, thumb: thumb}));
+  localStorage.setItem('shinzi_last_played', JSON.stringify({id: videoId, title, channel, thumb}));
 
   updateNowPlaying(title, channel, thumb);
-  if (window.syncHistoryToCloud) {
-      window.syncHistoryToCloud({ id: videoId, title: title, channel: channel, thumb: thumb });
-  }
-
+  if (window.syncHistoryToCloud) window.syncHistoryToCloud({ id: videoId, title, channel, thumb });
   checkIfFavorite();
 
-  try {
-    // 🚀 HIT YOUR AD-FREE STREAM EXTRACTOR ROUTE
-    const res = await fetch(`${BACKEND_STREAM_URL}?id=${videoId}`);
-    const data = await res.json();
+  // If the user clicks a song before the YouTube API finishes loading, save it to play next
+  if (!ytReady || !ytPlayer) {
+    pendingVideo = { id: videoId, title, channel, thumb };
+    return;
+  }
+  
+  // 🚀 Tell the Official API to stream the track instantly
+  ytPlayer.loadVideoById(videoId);
+}
 
-    if (data.audioUrl) {
-      audioPlayer.src = data.audioUrl;
-      await audioPlayer.play();
-    } else {
-      alert("Stream extraction failed. Try another track.");
+function onPlayerStateChange(event) {
+  if (event.data === YT.PlayerState.PLAYING) {
+    isPlaying = true;
+    updatePlayPauseBtn();
+    startProgressTracker();
+  } else if (event.data === YT.PlayerState.PAUSED) {
+    isPlaying = false;
+    updatePlayPauseBtn();
+    stopProgressTracker();
+  } else if (event.data === YT.PlayerState.ENDED) {
+    if (isRepeat) { 
+        ytPlayer.seekTo(0); 
+        ytPlayer.playVideo(); 
+    } else { 
+        playNext(); 
     }
-  } catch (err) {
-    console.error("Audio streaming error:", err);
-    alert("Streaming service busy. Try again.");
   }
 }
 
@@ -133,11 +156,11 @@ function updateNowPlaying(title, channel, thumb) {
 }
 
 function togglePlayPause() {
-  if (!audioPlayer.src) return;
+  if (!ytReady || !ytPlayer) return;
   if (isPlaying) {
-    audioPlayer.pause();
+    ytPlayer.pauseVideo();
   } else {
-    audioPlayer.play().catch(err => console.error("Playback failed", err));
+    ytPlayer.playVideo();
   }
 }
 
@@ -193,10 +216,19 @@ function playPrev() {
 }
 
 // ─── PROGRESS BAR SYNC ────────────────────────────────────
+function startProgressTracker() {
+  stopProgressTracker();
+  progressInterval = setInterval(updateProgress, 500);
+}
+
+function stopProgressTracker() {
+  clearInterval(progressInterval);
+}
+
 function updateProgress() {
-  if (!audioPlayer.src) return;
-  const current = audioPlayer.currentTime || 0;
-  const total = audioPlayer.duration || 0;
+  if (!ytReady || !ytPlayer || !isPlaying) return;
+  const current = ytPlayer.getCurrentTime() || 0;
+  const total = ytPlayer.getDuration() || 0;
   const pct = total > 0 ? (current / total) * 100 : 0;
 
   if (document.getElementById("progressFill")) document.getElementById("progressFill").style.width = pct + "%";
@@ -212,10 +244,11 @@ document.getElementById("progressBar")?.addEventListener("click", seekAudio);
 document.getElementById("innerProgressBar")?.addEventListener("click", seekAudio);
 
 function seekAudio(e) {
-  if (!audioPlayer.src || !audioPlayer.duration) return;
+  if (!ytReady || !ytPlayer) return;
   const bar = e.currentTarget;
   const pct = e.offsetX / bar.offsetWidth;
-  audioPlayer.currentTime = pct * audioPlayer.duration;
+  const total = ytPlayer.getDuration() || 0;
+  ytPlayer.seekTo(pct * total, true);
 }
 
 function formatTime(sec) {
@@ -411,15 +444,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       currentQueue = [lastPlayedTrack];
       currentIndex = 0;
       
-      // Prime the native audio loader invisibly with your backend extractor link
-      try {
-        const res = await fetch(`${BACKEND_STREAM_URL}?id=${lastPlayedTrack.id}`);
-        const data = await res.json();
-        if (data.audioUrl) {
-          audioPlayer.src = data.audioUrl;
-        }
-      } catch(e) { console.warn("Could not prime last track", e); }
-      
+      // Stage the video in the background instantly
+      pendingVideo = lastPlayedTrack;
       checkIfFavorite();
   }
 
